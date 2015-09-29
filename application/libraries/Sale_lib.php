@@ -22,7 +22,7 @@ class Sale_lib
 		$this->CI->session->set_userdata('cart',$cart_data);
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function get_payments()
 	{
 		if( !$this->CI->session->userdata( 'payments' ) )
@@ -31,7 +31,7 @@ class Sale_lib
 		return $this->CI->session->userdata('payments');
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function set_payments($payments_data)
 	{
 		$this->CI->session->set_userdata('payments',$payments_data);
@@ -130,7 +130,7 @@ class Sale_lib
 
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function edit_payment($payment_id,$payment_amount)
 	{
 		$payments = $this->get_payments();
@@ -144,7 +144,7 @@ class Sale_lib
 		return false;
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function delete_payment( $payment_id )
 	{
 		$payments = $this->get_payments();
@@ -152,13 +152,13 @@ class Sale_lib
 		$this->set_payments( $payments );
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function empty_payments()
 	{
 		$this->CI->session->unset_userdata('payments');
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function get_payments_total()
 	{
 		$subtotal = 0;
@@ -169,7 +169,7 @@ class Sale_lib
 		return to_currency_no_money($subtotal);
 	}
 
-	//Alain Multiple Payments
+	// Multiple Payments
 	function get_amount_due()
 	{
 		$amount_due=0;
@@ -209,7 +209,7 @@ class Sale_lib
     {
         if(!$this->CI->session->userdata('sale_location'))
         {
-             $location_id = $this->CI->Stock_locations->get_default_location_id();
+             $location_id = $this->CI->Stock_location->get_default_location_id();
              $this->set_sale_location($location_id);
         }
         return $this->CI->session->userdata('sale_location');
@@ -248,7 +248,7 @@ class Sale_lib
             return false;
         }
 
-		//Alain Serialization and Description
+		// Serialization and Description
 
 		//Get all items in the cart so far...
 		$items = $this->get_cart();
@@ -289,7 +289,7 @@ class Sale_lib
 		array(
 			'item_id'=>$item_id,
 			'item_location'=>$item_location,
-			'stock_name'=>$this->CI->Stock_locations->get_location_name($item_location),
+			'stock_name'=>$this->CI->Stock_location->get_location_name($item_location),
 			'line'=>$insertkey,
 			'name'=>$item_info->name,
 			'item_number'=>$item_info->item_number,
@@ -299,7 +299,7 @@ class Sale_lib
 			'is_serialized'=>$item_info->is_serialized,
 			'quantity'=>$quantity,
             'discount'=>$discount,
-			'in_stock'=>$this->CI->Item_quantities->get_item_quantity($item_id, $item_location)->quantity,
+			'in_stock'=>$this->CI->Item_quantity->get_item_quantity($item_id, $item_location)->quantity,
 			'price'=>$price,
 			'total'=>$total,
 			'discounted_total'=>$this->get_item_total($quantity, $price, $discount, TRUE)
@@ -332,10 +332,10 @@ class Sale_lib
 
 		
 		//$item = $this->CI->Item->get_info($item_id);
-		$item_quantity = $this->CI->Item_quantities->get_item_quantity($item_id,$item_location)->quantity; 
-		$quanity_added = $this->get_quantity_already_added($item_id,$item_location);
+		$item_quantity = $this->CI->Item_quantity->get_item_quantity($item_id,$item_location)->quantity;
+		$quantity_added = $this->get_quantity_already_added($item_id,$item_location);
 		
-		if ($item_quantity - $quanity_added < 0)
+		if ($item_quantity - $quantity_added < 0)
 		{
 			return true;
 		}

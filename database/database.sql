@@ -43,7 +43,7 @@ INSERT INTO `ospos_app_config` (`key`, `value`) VALUES
 ('invoice_default_comments', 'This is a default comment'),
 ('company_logo', ''),
 ('barcode_content', 'id'),
-('barcode_type', 'id'),
+('barcode_type', 'Code39'),
 ('barcode_width', '250'),
 ('barcode_height', '50'),
 ('barcode_quality', '100'),
@@ -51,7 +51,7 @@ INSERT INTO `ospos_app_config` (`key`, `value`) VALUES
 ('barcode_font_size', '10'),
 ('barcode_first_row', 'category'),
 ('barcode_second_row', 'item_code'),
-('barcode_third_row', 'cost_price'),
+('barcode_third_row', 'unit_price'),
 ('barcode_num_in_row', '2'),
 ('barcode_page_width', '100'),      
 ('barcode_page_cellspacing', '20'),
@@ -67,7 +67,10 @@ INSERT INTO `ospos_app_config` (`key`, `value`) VALUES
 ('print_right_margin', '0'),
 ('default_sales_discount', '0'),
 ('lines_per_page', '25'),
-('show_total_discount', '1');
+('show_total_discount', '1'),
+('dateformat', 'm-d-Y'),
+('timeformat', 'H:i:s'),
+('currency_symbol', '$');
 
 -- --------------------------------------------------------
 
