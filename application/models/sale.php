@@ -8,81 +8,96 @@ class Sale extends CI_Model
 		$this->db->select('DATE_FORMAT( sale_time, "%d-%m-%Y" ) AS sale_date', FALSE);
 		$this->db->select('CONCAT(first_name," ",  last_name) AS customer_name', FALSE);
 		$this->db->select('SUM(item_unit_price * quantity_purchased * (1 - discount_percent / 100)) AS amount_due');
-		$this->db->from("sales_items_temp");
+		$this->db->from('sales_items_temp');
 		$this->db->join('people', 'people.person_id = sales_items_temp.customer_id', 'left');
 
 		$this->db->where('sales_items_temp.sale_id', $sale_id);
-		$this->db->order_by('sale_time', 'desc');
 		$this->db->group_by('sale_id');
+		$this->db->order_by('sale_time', 'asc');
 
 		return $this->db->get();
 	}
 	
-	// get the sales data for the takings table
-	public function get_all($inputs)
+	/*
+	 Get number of rows for the takings (sales/manage) view
+	*/
+	public function get_found_rows($search, $filters)
+	{
+		return $this->search($search, $filters)->num_rows();
+	}
+
+	/*
+	 Get the sales data for the takings (sales/manage) view
+	*/
+	public function search($search, $filters, $rows=0, $limit_from=0)
 	{
 		$this->db->select('sale_id, sale_date, sale_time, SUM(quantity_purchased) AS items_purchased,
-						CONCAT(customer.first_name," ",customer.last_name) AS customer_name, SUM(subtotal) AS subtotal, SUM(total) AS total, SUM(tax) AS tax, SUM(cost) AS cost, SUM(profit) AS profit,
-						sale_payment_amount AS amount_tendered, SUM(total) AS amount_due, (sale_payment_amount - SUM(total)) AS change_due, payment_type, invoice_number', FALSE);
+						CONCAT(customer.first_name," ",customer.last_name) AS customer_name, 
+						SUM(subtotal) AS subtotal, SUM(total) AS total, SUM(tax) AS tax, SUM(cost) AS cost, SUM(profit) AS profit,
+						sale_payment_amount AS amount_tendered, SUM(total) AS amount_due, (sale_payment_amount - SUM(total)) AS change_due, 
+						payment_type, invoice_number', FALSE);
 		$this->db->from('sales_items_temp');
 		$this->db->join('people AS customer', 'sales_items_temp.customer_id = customer.person_id', 'left');
 
-		if (empty($inputs['search']))
+		if (empty($search))
 		{
-			$this->db->where('sale_date BETWEEN '. $this->db->escape($inputs['start_date']). ' AND '. $this->db->escape($inputs['end_date']));
+			$this->db->where('sale_date BETWEEN '. $this->db->escape($filters['start_date']). ' AND '. $this->db->escape($filters['end_date']));
 		}
 		else
 		{
-			if ($inputs['is_valid_receipt'])
+			if ($filters['is_valid_receipt'])
 			{
-				$pieces = explode(' ',$inputs['search']);
+				$pieces = explode(' ', $search);
 				$this->db->where('sales_items_temp.sale_id', $pieces[1]);
 			}
 
 			else
 			{
-				$this->db->like('last_name', $inputs['search']);
-				$this->db->or_like('first_name', $inputs['search']);
-				$this->db->or_like('CONCAT( customer.first_name, " ", last_name)', $inputs['search']);
+				$this->db->like('last_name', $search);
+				$this->db->or_like('first_name', $search);
+				$this->db->or_like('CONCAT(customer.first_name, " ", last_name)', $search);
 			}
 		}
 
-		if ($inputs['location_id'] != 'all')
+		if ($filters['location_id'] != 'all')
 		{
-			$this->db->where('item_location', $inputs['location_id']);
+			$this->db->where('item_location', $filters['location_id']);
 		}
 
-		if ($inputs['sale_type'] == 'sales')
+		if ($filters['sale_type'] == 'sales')
         {
             $this->db->where('quantity_purchased > 0');
         }
-        elseif ($inputs['sale_type'] == 'returns')
+        elseif ($filters['sale_type'] == 'returns')
         {
             $this->db->where('quantity_purchased < 0');
         }
 		
-		if ($inputs['only_invoices'] != FALSE)
+		if ($filters['only_invoices'] != FALSE)
 		{
 			$this->db->where('invoice_number <> ', 'NULL');
 		}
 
-		if ($inputs['only_cash'] != FALSE)
+		if ($filters['only_cash'] != FALSE)
 		{
 			$this->db->like('payment_type ', $this->lang->line('sales_cash'), 'after');
 		}
 		
 		$this->db->group_by('sale_id');
-		$this->db->order_by('sale_date', 'desc');
+		$this->db->order_by('sale_date', 'asc');
 		
-		if ($inputs['lines_per_page'] > 0)
+		if ($rows > 0)
 		{
-			$this->db->limit($inputs['lines_per_page'], $inputs['limit_from']);
+			$this->db->limit($rows, $limit_from);
 		}
 
-		return $this->db->get()->result_array();
+		return $this->db->get();
 	}
 
-	function get_payments_summary($inputs)
+	/*
+	 Get the payment summary for the takings (sales/manage) view
+	*/
+	public function get_payments_summary($search, $filters)
 	{
 		// get payment summary
 		$this->db->select('payment_type, count(*) AS count, SUM(payment_amount) AS payment_amount', FALSE);
@@ -90,45 +105,45 @@ class Sale extends CI_Model
 		$this->db->join('sales_payments', 'sales_payments.sale_id=sales.sale_id');
 		$this->db->join('people', 'people.person_id = sales.customer_id', 'left');
 
-		if (empty($inputs['search']))
+		if (empty($search))
 		{
-			$this->db->where('DATE(sale_time) BETWEEN '. $this->db->escape($inputs['start_date']). ' AND '. $this->db->escape($inputs['end_date']));
+			$this->db->where('DATE(sale_time) BETWEEN '. $this->db->escape($filters['start_date']). ' AND '. $this->db->escape($filters['end_date']));
 		}
 		else
 		{
-			if ($inputs['is_valid_receipt'])
+			if ($filters['is_valid_receipt'])
 			{
-				$pieces = explode(' ',$inputs['search']);
+				$pieces = explode(' ',$search);
 				$this->db->where('sales.sale_id', $pieces[1]);
 			}
 			else
 			{
-				$this->db->like('last_name', $inputs['search']);
-				$this->db->or_like('first_name', $inputs['search']);
-				$this->db->or_like('CONCAT( first_name, " ", last_name)', $inputs['search']);
+				$this->db->like('last_name', $search);
+				$this->db->or_like('first_name', $search);
+				$this->db->or_like('CONCAT(first_name, " ", last_name)', $search);
 			}
 		}
 
-		if ($inputs['sale_type'] == 'sales')
+		if ($filters['sale_type'] == 'sales')
 		{
 			$this->db->where('payment_amount > 0');
 		}
-		elseif ($inputs['sale_type'] == 'returns')
+		elseif ($filters['sale_type'] == 'returns')
 		{
 			$this->db->where('payment_amount < 0');
 		}
 
-		if ($inputs['only_invoices'] != FALSE)
+		if ($filters['only_invoices'] != FALSE)
 		{
 			$this->db->where('invoice_number <> ', 'NULL');
 		}
 		
-		if ($inputs['only_cash'] != FALSE)
+		if ($filters['only_cash'] != FALSE)
 		{
 			$this->db->like('payment_type ', $this->lang->line('sales_cash'), 'after');
 		}
 
-		$this->db->group_by("payment_type");
+		$this->db->group_by('payment_type');
 
 		$payments = $this->db->get()->result_array();
 
@@ -155,13 +170,14 @@ class Sale extends CI_Model
 		return $payments;
 	}
 	
-	function get_total_rows()
+	public function get_total_rows()
 	{
 		$this->db->from('sales');
+
 		return $this->db->count_all_results();
 	}
 
-	function get_search_suggestions($search, $limit=25)
+	public function get_search_suggestions($search, $limit=25)
 	{
 		$suggestions = array();
 
@@ -173,23 +189,23 @@ class Sale extends CI_Model
 			$this->db->join('people', 'people.person_id = sales.customer_id');
 			$this->db->like('last_name', $search);
 			$this->db->or_like('first_name', $search);
-			$this->db->or_like('CONCAT( first_name, " ", last_name)', $search);
-			$this->db->order_by('last_name', "asc");
+			$this->db->or_like('CONCAT(first_name, " ", last_name)', $search);
+			$this->db->order_by('last_name', 'asc');
 
 			foreach($this->db->get()->result_array() as $result)
 			{
-				$suggestions[]=$result[ 'first_name' ].' '.$result[ 'last_name' ];
+				$suggestions[] = $result[ 'first_name' ].' '.$result[ 'last_name' ];
 			}
 		}
 		else
 		{
-			$suggestions[]=$search;
+			$suggestions[] = $search;
 		}
 
 		return $suggestions;
 	}
 
-	function get_invoice_count()
+	public function get_invoice_count()
 	{
 		$this->db->from('sales');
 		$this->db->where('invoice_number is not null');
@@ -197,7 +213,7 @@ class Sale extends CI_Model
 		return $this->db->count_all_results();
 	}
 	
-	function get_sale_by_invoice_number($invoice_number)
+	public function get_sale_by_invoice_number($invoice_number)
 	{
 		$this->db->from('sales');
 		$this->db->where('invoice_number', $invoice_number);
@@ -205,7 +221,7 @@ class Sale extends CI_Model
 		return $this->db->get();
 	}
 	
-	function get_invoice_number_for_year($year = '', $start_from = 0) 
+	public function get_invoice_number_for_year($year = '', $start_from = 0) 
 	{
 		$year = $year == '' ? date('Y') : $year;
 		$this->db->select("COUNT( 1 ) AS invoice_number_year", FALSE);
@@ -217,7 +233,7 @@ class Sale extends CI_Model
 		return ($start_from + $result[ 'invoice_number_year']);
 	}
 
-	function exists($sale_id)
+	public function exists($sale_id)
 	{
 		$this->db->from('sales');
 		$this->db->where('sale_id', $sale_id);
@@ -225,7 +241,7 @@ class Sale extends CI_Model
 		return ($this->db->get()->num_rows()==1);
 	}
 	
-	function update($sale_data, $sale_id)
+	public function update($sale_data, $sale_id)
 	{
 		$this->db->where('sale_id', $sale_id);
 		$success = $this->db->update('sales', $sale_data);
@@ -233,7 +249,7 @@ class Sale extends CI_Model
 		return $success;
 	}
 	
-	function save($items, $customer_id, $employee_id, $comment, $invoice_number, $payments, $sale_id=false)
+	public function save($items, $customer_id, $employee_id, $comment, $invoice_number, $payments, $sale_id=false)
 	{
 		if(count($items)==0)
 		{
@@ -280,8 +296,8 @@ class Sale extends CI_Model
 				'sale_id'=>$sale_id,
 				'item_id'=>$item['item_id'],
 				'line'=>$item['line'],
-				'description'=>$item['description'],
-				'serialnumber'=>$item['serialnumber'],
+				'description'=>character_limiter(base64_decode($item['description']), 30),
+				'serialnumber'=>character_limiter($item['serialnumber'], 30),
 				'quantity_purchased'=>$item['quantity'],
 				'discount_percent'=>$item['discount'],
 				'item_cost_price' => $cur_item_info->cost_price,
@@ -336,7 +352,7 @@ class Sale extends CI_Model
 		return $sale_id;
 	}
 	
-	function delete_list($sale_ids, $employee_id, $update_inventory=TRUE) 
+	public function delete_list($sale_ids, $employee_id, $update_inventory=TRUE) 
 	{
 		$result = TRUE;
 
@@ -348,7 +364,7 @@ class Sale extends CI_Model
 		return $result;
 	}
 	
-	function delete($sale_id, $employee_id, $update_inventory=TRUE) 
+	public function delete($sale_id, $employee_id, $update_inventory=TRUE) 
 	{
 		// start a transaction to assure data integrity
 		$this->db->trans_start();
@@ -357,11 +373,13 @@ class Sale extends CI_Model
 		// then delete all taxes on items
 		$this->db->delete('sales_items_taxes', array('sale_id' => $sale_id));
 
-		if ($update_inventory) {
+		if ($update_inventory)
+		{
 			// defect, not all item deletions will be undone??
 			// get array with all the items involved in the sale to update the inventory tracking
 			$items = $this->get_sale_items($sale_id)->result_array();
-			foreach($items as $item) {
+			foreach($items as $item)
+			{
 				// create query to update inventory tracking
 				$inv_data = array
 				(
@@ -392,7 +410,7 @@ class Sale extends CI_Model
 		return $this->db->trans_status();
 	}
 
-	function get_sale_items($sale_id)
+	public function get_sale_items($sale_id)
 	{
 		$this->db->from('sales_items');
 		$this->db->where('sale_id', $sale_id);
@@ -400,7 +418,7 @@ class Sale extends CI_Model
 		return $this->db->get();
 	}
 
-	function get_sale_payments($sale_id)
+	public function get_sale_payments($sale_id)
 	{
 		$this->db->from('sales_payments');
 		$this->db->where('sale_id', $sale_id);
@@ -408,7 +426,7 @@ class Sale extends CI_Model
 		return $this->db->get();
 	}
 
-	function get_customer($sale_id)
+	public function get_customer($sale_id)
 	{
 		$this->db->from('sales');
 		$this->db->where('sale_id', $sale_id);
@@ -416,7 +434,7 @@ class Sale extends CI_Model
 		return $this->Customer->get_info($this->db->get()->row()->customer_id);
 	}
 	
-	function invoice_number_exists($invoice_number, $sale_id='')
+	public function invoice_number_exists($invoice_number, $sale_id='')
 	{
 		$this->db->from('sales');
 		$this->db->where('invoice_number', $invoice_number);
@@ -428,7 +446,7 @@ class Sale extends CI_Model
 		return ($this->db->get()->num_rows()==1);
 	}
 	
-	function get_giftcard_value( $giftcardNumber )
+	public function get_giftcard_value( $giftcardNumber )
 	{
 		if ( !$this->Giftcard->exists( $this->Giftcard->get_giftcard_id($giftcardNumber) ) )
 		{
@@ -442,7 +460,7 @@ class Sale extends CI_Model
 	}
 
 	//We create a temp table that allows us to do easy report/sales queries
-	function create_sales_items_temp_table()
+	public function create_sales_items_temp_table()
 	{
 		if ($this->config->item('tax_included'))
 		{

@@ -74,7 +74,28 @@ abstract class BarcodeBase
 	{
 		return $this->data;
 	}
-	
+
+	/**
+	 * Validate the given barcode.
+	 * @param $barcode The barcode to validate
+	 * @return bool true if it complies with the barcode formatting
+	 */
+	public function validate($barcode)
+	{
+		return TRUE;
+	}
+
+	/**
+	 * Generate a barcode for this implementation using the given seed.
+	 * Default implementation returns just the seed
+	 * @param $number The seed to generate a barcode for
+	 * @return mixed The generated barcode
+	 */
+	public function generate($number)
+	{
+		return $number;
+	}
+
 	/*
 	 * (Abstract) Draw the image
 	 *

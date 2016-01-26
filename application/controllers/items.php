@@ -80,8 +80,9 @@ class Items extends Secure_area implements iData_controller
 		$total_rows = $this->Item->get_found_rows($search, $filters);
 		$links = $this->_initialize_pagination($this->Item, $lines_per_page, $limit_from, $total_rows, 'search');
 		$data_rows = get_items_manage_table_data_rows($items, $this);
+		// do not move this line to be after the json_encode otherwise the searhc function won't work!!
 		$this->_remove_duplicate_cookies();
-
+		
 		echo json_encode(array('total_rows' => $total_rows, 'rows' => $data_rows, 'pagination' => $links));
 	}
 	
@@ -261,6 +262,7 @@ class Items extends Secure_area implements iData_controller
 		$data_row = get_item_data_row($item_info,$this);
 		
 		echo $data_row;
+
 		$this->_remove_duplicate_cookies();
 	}
 
@@ -330,21 +332,17 @@ class Items extends Secure_area implements iData_controller
 		$result = $this->Item->get_multiple_info($item_ids)->result_array();
 		$config = $this->barcode_lib->get_barcode_config();
 
-		$data['items'] = $result;
 		$data['barcode_config'] = $config;
 		
-		// display barcodes
-		$this->load->view("barcode_sheet", $data);
-		
 		// check the list of items to see if any item_number field is empty
-		foreach($result as $item)
+		foreach($result as &$item)
 		{
 			// update the UPC/EAN/ISBN field if empty / null with the newly generated barcode
-			if ($item['item_number'] == '' || $item['item_number'] == null)
+			if (empty($item['item_number']) && $this->Appconfig->get('barcode_generate_if_empty'))
 			{
 				// get the newly generated barcode
-				$item['item_number'] = $this->barcode_lib->get_barcode($item, $config);
-				
+				$barcode_instance = Barcode_lib::barcode_instance($item, $config);
+				$item['item_number'] = $barcode_instance->getData();
 				// remove from item any suppliers table info to avoid save failure because of unknown fields
 				// WARNING: if suppliers table is changed this list needs to be upgraded, which makes the matter a bit tricky to maintain
 				unset($item['person_id']);
@@ -356,6 +354,10 @@ class Items extends Secure_area implements iData_controller
 				$this->Item->save($item, $item['item_id']);
 			}
 		}
+		$data['items'] = $result;
+		// display barcodes
+		$this->load->view("barcode_sheet", $data);
+
 	}
 
 	function bulk_edit()
@@ -495,7 +497,6 @@ class Items extends Secure_area implements iData_controller
 	function check_item_number()
 	{
 		$exists = $this->Item->item_number_exists($this->input->post('item_number'),$this->input->post('item_id'));
-
 		echo json_encode(array('success'=>!$exists,'message'=>$this->lang->line('items_item_number_duplicate')));
 	}
 	

@@ -3,6 +3,7 @@
 <script type="text/javascript">
 $(document).ready(function()
 {
+	$.datepicker.regional[ '<?php echo $this->config->item('language'); ?>' ];
     init_table_sorting();
     enable_checkboxes();
     enable_row_selection();
@@ -39,7 +40,9 @@ $(document).ready(function()
 		if(d !== i.lastVal){
 			$(this).change();
 		}
-	}, dateFormat: "<?php echo dateformat_jquery($this->config->item('dateformat'));?>"}).change(function() {
+	}, dateFormat: "<?php echo dateformat_jquery($this->config->item('dateformat'));?>",
+	   timeFormat: "<?php echo dateformat_jquery($this->config->item('timeFormat'));?>"
+	}).change(function() {
 		do_search(true, function(response) {
 			$("#payment_summary").html(response.payment_summary);
 		});
